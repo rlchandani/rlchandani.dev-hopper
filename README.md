@@ -25,6 +25,11 @@ Visit [https://hopper.rlchandani.dev](https://hopper.rlchandani.dev) to see the 
 4. Make this newly added custom site search as the default search engine.
 5. All done! Now open a new tab and start using [available commands](https://hopper.rlchandani.dev)
 
+### Use Hopper on Browser
+
+1. Command can be used as it is to redirect to configured URL like `gh` will redirect to `https://github.com/`
+2. Also, additional text can be added after the command to redirect to configured search URL like `gh rlchandani` will redirect to `https://github.com/search?q=rlchandani`
+
 ### Supported Browser
 
 1. Chrome
