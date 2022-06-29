@@ -1,4 +1,7 @@
 {
+  "database": {
+    "rules": "database.rules.json"
+  },
   "hosting": {
     "target": "hopper",
     "public": "public",
@@ -11,6 +14,10 @@
       {
         "source": "/",
         "function": "hopper"
+      },
+      {
+        "source": "/backfill",
+        "function": "backfill"
       },
       {
         "source": "**",
@@ -31,10 +38,17 @@
       "port": 8080
     },
     "functions": {
+      "host": "0.0.0.0",
       "port": 5001
     },
     "ui": {
-      "enabled": true
+      "host": "0.0.0.0",
+      "enabled": true,
+      "port": 4000
+    },
+    "database": {
+      "host": "0.0.0.0",
+      "port": 9000
     }
   }
 }

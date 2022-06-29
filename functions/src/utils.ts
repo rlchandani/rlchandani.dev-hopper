@@ -1,11 +1,17 @@
-import { CommandNames, COMMANDS } from "./commands.js";
+import { COMMANDS } from "./commands";
+import {
+  addCommand,
+  getAllCommands
+} from "./orchestrator/command.orchestrator";
+import { PublicCommandNames } from "./type/command.type";
 
-export const viewHelpPage = () => {
-  const data = Object.keys(COMMANDS).map((command: string) => {
-    const cmdData = COMMANDS[command as CommandNames];
+export const viewHelpPage = async () => {
+  const columns = [{ title: "Command" }, { title: "Name" }, { title: "Uri" }];
+  const allCommands = await getAllCommands();
+  const data = Object.keys(allCommands).map((command: string) => {
+    const cmdData = allCommands[command];
     return [cmdData.name, cmdData.url, command];
   });
-  const columns = [{ title: "Command" }, { title: "Name" }, { title: "Uri" }];
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -21,6 +27,7 @@ export const viewHelpPage = () => {
       <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
       <script>
         $(document).ready(function () {
+          console.log(${JSON.stringify(data)});
           $('#hopper-commands').DataTable({
             data: ${JSON.stringify(data)},
             columns: ${JSON.stringify(columns)}
@@ -30,4 +37,16 @@ export const viewHelpPage = () => {
     </body>
     </html>
   `;
+};
+
+export const initDB = async () => {
+  const promises: Promise<void>[] = [];
+  Object.keys(COMMANDS).forEach((scope: string) => {
+    Object.keys(COMMANDS[scope]).forEach((id: string) =>
+      promises.push(
+        addCommand(scope, id, COMMANDS[scope][id as PublicCommandNames])
+      )
+    );
+  });
+  await Promise.all(promises);
 };
