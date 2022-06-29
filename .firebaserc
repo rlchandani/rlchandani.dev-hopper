@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "rlchandani-dev"
+  },
+  "targets": {
+    "rlchandani-dev": {
+      "hosting": {
+        "hopper": [
+          "rlchandani-dev-hopper"
+        ]
+      }
+    }
+  }
+}
