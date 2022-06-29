@@ -11,35 +11,23 @@ export type CommandNames =
   | "wa"
   | "waw"
   | "gm"
-  | "sis"
-  | "col"
   | "yt"
-  | "tv"
   | "gh"
   | "r"
   | "l"
-  | "me"
   | "ig"
   | "tw"
-  | "tr"
   | "vs"
   | "todo"
   | "c"
   | "wf"
   | "$"
   | "cal"
-  | "uvacovid"
-  | "hs"
   | "p"
-  | "n"
-  | "h"
-  | "pv"
   | "gd"
-  | "wp"
-  | "wsj"
-  | "cnn"
   | "wiki"
   | "g"
+  | "developer"
   | "DEFAULT";
 
 export const COMMANDS: { [key in CommandNames]: CommandType } = {
@@ -74,22 +62,10 @@ export const COMMANDS: { [key in CommandNames]: CommandType } = {
     url: "https://drive.google.com/drive/u/0",
     searchurl: "https://drive.google.com/drive/u/"
   },
-  sis: {
-    name: "UVA SIS",
-    url: "https://sisuva.admin.virginia.edu/psc/ihprd/UVSS/SA/s/WEBLIB_HCX_GN.H_SPRINGBOARD.FieldFormula.IScript_Main"
-  },
-  col: {
-    name: "UVA Collab",
-    url: "https://collab.its.virginia.edu/portal"
-  },
   yt: {
     name: "YouTube",
     url: "https://youtube.com/",
     searchurl: "https://www.youtube.com/results?search_query="
-  },
-  tv: {
-    name: "YouTube TV",
-    url: "https://tv.youtube.com/"
   },
   gh: {
     name: "GitHub",
@@ -115,44 +91,14 @@ export const COMMANDS: { [key in CommandNames]: CommandType } = {
     url: "https://twitter.com/",
     searchurl: "https://twitter.com/search?q="
   },
-  me: {
-    name: "Rithik.me - Personal Website",
-    url: "https://rithik.me/me"
+  developer: {
+    name: "Rohit Lal Chandani | ",
+    url: "https://rlchandani.dev/about"
   },
   g: {
     name: "Google",
     url: "https://google.com/",
     searchurl: "https://www.google.com/search?q="
-  },
-  wp: {
-    name: "Washington Post",
-    url: "https://www.washingtonpost.com/regional/"
-  },
-  wsj: {
-    name: "Wall Street Journal",
-    url: "https://www.wsj.com/"
-  },
-  cnn: {
-    name: "CNN",
-    url: "https://www.cnn.com/"
-  },
-  tr: {
-    name: "HooHacks Trello Board",
-    url: "https://trello.com/b/GjKhtVPK/hoohacks"
-  },
-  n: {
-    name: "Netflix",
-    url: "https://netflix.com/",
-    searchurl: "https://www.netflix.com/search?q="
-  },
-  h: {
-    name: "Hulu",
-    url: "https://hulu.com/"
-  },
-  pv: {
-    name: "Amazon Prime Video",
-    url: "https://www.amazon.com/Amazon-Video/b/?&node=2858778011&ref=dvm_MLP_ROWNA_US_1",
-    searchurl: "https://www.amazon.com/s?i=instant-video&ref=nb_sb_noss_2&k="
   },
   p: {
     name: "Piazza",
@@ -165,10 +111,6 @@ export const COMMANDS: { [key in CommandNames]: CommandType } = {
   wf: {
     name: "Webflow",
     url: "https://webflow.com/design/hoohacks"
-  },
-  hs: {
-    name: "Hubspot",
-    url: "https://app.hubspot.com/"
   },
   $: {
     name: "Robinhood",
@@ -183,10 +125,6 @@ export const COMMANDS: { [key in CommandNames]: CommandType } = {
   cal: {
     name: "Google Calendar",
     url: "https://calendar.google.com/calendar/r"
-  },
-  uvacovid: {
-    name: "UVA COVID-19 Tracker",
-    url: "https://returntogrounds.virginia.edu/covid-tracker"
   },
   wiki: {
     name: "Wikipedia",
