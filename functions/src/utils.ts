@@ -10,7 +10,7 @@ export const viewHelpPage = async () => {
   const allCommands = await getAllCommands();
   const data = Object.keys(allCommands).map((command: string) => {
     const cmdData = allCommands[command];
-    return [cmdData.name, cmdData.url, command];
+    return [command, cmdData.name, cmdData.url];
   });
   return `
     <!DOCTYPE html>
@@ -39,7 +39,7 @@ export const viewHelpPage = async () => {
   `;
 };
 
-export const initDB = async () => {
+export const loadDB = async () => {
   const promises: Promise<void>[] = [];
   Object.keys(COMMANDS).forEach((scope: string) => {
     Object.keys(COMMANDS[scope]).forEach((id: string) =>
@@ -49,4 +49,20 @@ export const initDB = async () => {
     );
   });
   await Promise.all(promises);
+};
+
+export const getAvailableCommands = async (scopes: string[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const response:any = {};
+  for (const scope of scopes) {
+    console.log(scopes);
+    await getAllCommands(scope).then((allCommands) => {
+      const commands = Object.keys(allCommands).map((command: string) => {
+        const cmdData = allCommands[command];
+        return { [command]: cmdData.name };
+      });
+      response[scope] = commands;
+    });
+  }
+  return response;
 };

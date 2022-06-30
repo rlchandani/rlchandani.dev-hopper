@@ -1,4 +1,5 @@
 import { https, logger } from "firebase-functions";
+import { ParsedQs } from "qs";
 
 import { COMMANDS } from "./commands";
 import { getCommandById } from "./orchestrator/command.orchestrator";
@@ -8,7 +9,7 @@ import {
   DEFAULT_SCOPE,
   DEFAULT_SEARCH
 } from "./type/command.type";
-import { initDB, viewHelpPage } from "./utils";
+import { getAvailableCommands, loadDB, viewHelpPage } from "./utils";
 
 const hopperLookup = async (scope: string, input: string) => {
   let inputArray: Array<string> = [];
@@ -54,13 +55,25 @@ const hopperLookup = async (scope: string, input: string) => {
   });
 };
 
-export const backfill = https.onRequest(async (request, response) => {
-  await initDB();
+export const initDB = https.onRequest(async (request, response) => {
+  await loadDB();
   response.status(200).send("Data loaded");
 });
 
+const _handleScopeQueryParameter = (queryParameter: string | string[] | ParsedQs | ParsedQs[] | undefined) => {
+  if (queryParameter === undefined || queryParameter === null || queryParameter === "") {
+    return [];
+  }
+  return queryParameter.toString().split(",");
+};
+
+export const apiGetCommands = https.onRequest(async (request, response) => {
+  const scopesQuery = new Set([..._handleScopeQueryParameter(request.query.scope), DEFAULT_SCOPE]);
+  response.status(200).send(await getAvailableCommands([...scopesQuery]));
+});
+
 export const hopper = https.onRequest(async (request, response) => {
-  const scopesQuery = new Set([String(request.query.scope), DEFAULT_SCOPE]);
+  const scopesQuery = new Set([..._handleScopeQueryParameter(request.query.scope), DEFAULT_SCOPE]);
   const searchQuery = String(request.query.search || DEFAULT_SEARCH);
   const defaultCommand = await getCommandById(
     DEFAULT_SCOPE,
@@ -68,7 +81,7 @@ export const hopper = https.onRequest(async (request, response) => {
   ).catch(() => COMMANDS[DEFAULT_SCOPE][DEFAULT_COMMAND]);
   let isFound = false;
   switch (searchQuery) {
-    case "help":
+    case DEFAULT_SEARCH:
       response.status(200).send(await viewHelpPage());
       break;
     default:

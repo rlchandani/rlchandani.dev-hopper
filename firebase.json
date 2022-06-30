@@ -16,8 +16,12 @@
         "function": "hopper"
       },
       {
-        "source": "/backfill",
-        "function": "backfill"
+        "source": "/api/initDB",
+        "function": "initDB"
+      },
+      {
+        "source": "/api/commands",
+        "function": "apiGetCommands"
       },
       {
         "source": "**",
