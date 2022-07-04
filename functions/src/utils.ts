@@ -39,7 +39,7 @@ export const viewHelpPage = async () => {
   `;
 };
 
-export const loadDB = async () => {
+export const initDB = async () => {
   const promises: Promise<void>[] = [];
   Object.keys(COMMANDS).forEach((scope: string) => {
     Object.keys(COMMANDS[scope]).forEach((id: string) =>
@@ -57,11 +57,11 @@ export const getAvailableCommands = async (scopes: string[]) => {
   for (const scope of scopes) {
     console.log(scopes);
     await getAllCommands(scope).then((allCommands) => {
-      const commands = Object.keys(allCommands).map((command: string) => {
+      Object.keys(allCommands).forEach((command: string) => {
         const cmdData = allCommands[command];
-        return { [command]: cmdData.name };
+        allCommands[command] = cmdData.name;
       });
-      response[scope] = commands;
+      response[scope] = allCommands;
     });
   }
   return response;

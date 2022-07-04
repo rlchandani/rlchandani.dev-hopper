@@ -9,7 +9,7 @@ import {
   DEFAULT_SCOPE,
   DEFAULT_SEARCH
 } from "./type/command.type";
-import { getAvailableCommands, loadDB, viewHelpPage } from "./utils";
+import { getAvailableCommands, initDB, viewHelpPage } from "./utils";
 
 const hopperLookup = async (scope: string, input: string) => {
   let inputArray: Array<string> = [];
@@ -55,8 +55,8 @@ const hopperLookup = async (scope: string, input: string) => {
   });
 };
 
-export const initDB = https.onRequest(async (request, response) => {
-  await loadDB();
+export const loadDB = https.onRequest(async (request, response) => {
+  await initDB();
   response.status(200).send("Data loaded");
 });
 
