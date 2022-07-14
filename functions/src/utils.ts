@@ -27,7 +27,6 @@ export const viewHelpPage = async () => {
       <script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
       <script>
         $(document).ready(function () {
-          console.log(${JSON.stringify(data)});
           $('#hopper-commands').DataTable({
             data: ${JSON.stringify(data)},
             columns: ${JSON.stringify(columns)}
@@ -55,7 +54,6 @@ export const getAvailableCommands = async (scopes: string[]) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const response:any = {};
   for (const scope of scopes) {
-    console.log(scopes);
     await getAllCommands(scope).then((allCommands) => {
       Object.keys(allCommands).forEach((command: string) => {
         const cmdData = allCommands[command];
