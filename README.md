@@ -14,9 +14,9 @@ This is hosted live on [https://hopper.rlchandani.dev](https://hopper.rlchandani
 
 Visit [https://hopper.rlchandani.dev](https://hopper.rlchandani.dev) to see the list of available commands.
 
-## Setup Hopper on Browser
+## Configure Hopper on Browser
 
-1. Open `Chrome` > `Settings` > `Search Engines` > `Manage Search Engines`
+1. Open `Chrome > Settings > Search Engines > Manage Search Engines`
 2. Click `Add` under `Site search`
 3. Type in following information in dialog and click `Save`
    - Search engine: `Hopper`
@@ -33,9 +33,8 @@ Visit [https://hopper.rlchandani.dev](https://hopper.rlchandani.dev) to see the 
 ### Supported Browser
 
 1. Chrome
-2. Firefox
-3. Safari
-4. Any other browser that support custom site search
+2. Firefox (Use [Add custom search engine](https://addons.mozilla.org/en-US/firefox/addon/add-custom-search-engine/) plugin to configure custom seach engine)
+3. Any other browser that support custom site search
 
 ### Download and Build Locally (Mac)
 
