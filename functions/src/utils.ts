@@ -5,13 +5,21 @@ import {
 } from "./orchestrator/command.orchestrator";
 import { PublicCommandNames } from "./type/command.type";
 
-export const viewHelpPage = async () => {
-  const columns = [{ title: "Command" }, { title: "Name" }, { title: "Uri" }];
-  const allCommands = await getAllCommands();
-  const data = Object.keys(allCommands).map((command: string) => {
-    const cmdData = allCommands[command];
-    return [command, cmdData.name, cmdData.url];
-  });
+export const viewHelpPage = async (scopes: Set<string>) => {
+  const columns = [
+    { title: "Scope" },
+    { title: "Command" },
+    { title: "Name" },
+    { title: "Uri" },
+    { title: "Search Uri" }];
+  const data: string[][] = [];
+  for (const scope of scopes) {
+    const tempCommands = await getAllCommands(scope);
+    Object.keys(tempCommands).forEach((command: string) => {
+      const cmdData = tempCommands[command];
+      return data.push([scope, command, cmdData.name, cmdData.url, cmdData.searchurl || ""]);
+    });
+  }
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -50,16 +58,29 @@ export const initDB = async () => {
   await Promise.all(promises);
 };
 
+type GetAvailableCommandsResponseCommand = {
+  // { command: description of command }
+  // eg: { "pt": "Phonetool"}
+  [command:string]: string;
+}
+
+type GetAvailableCommandsResponse = {
+  // { scope: { command: description of command } }
+  // eg: { "amazon": { "pt": "Phonetool" } }
+  [scope: string]: GetAvailableCommandsResponseCommand
+};
+
 export const getAvailableCommands = async (scopes: string[]) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const response:any = {};
+  const response:GetAvailableCommandsResponse = {};
   for (const scope of scopes) {
     await getAllCommands(scope).then((allCommands) => {
       Object.keys(allCommands).forEach((command: string) => {
         const cmdData = allCommands[command];
-        allCommands[command] = cmdData.name;
+        if (scope in response === false) {
+          response[scope] = {} as GetAvailableCommandsResponseCommand;
+        }
+        response[scope][command] = cmdData.name;
       });
-      response[scope] = allCommands;
     });
   }
   return response;

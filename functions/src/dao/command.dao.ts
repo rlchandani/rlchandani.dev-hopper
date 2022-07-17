@@ -23,11 +23,7 @@ const decodeSpecialChars = (input: string) => {
     .replace(/\|sq_bracket_close\|/g, "]");
 };
 
-const add = async (
-  scope: string,
-  commandId: string,
-  commandItem: CommandItemType
-) => {
+const add = async (scope: string, commandId: string, commandItem: CommandItemType): Promise<boolean> => {
   const id = encodeSpecialChars(commandId);
   const retCommand = await get(scope, id);
   if (
@@ -43,14 +39,14 @@ const add = async (
   return false;
 };
 
-const getAll = async (scope: string) => {
+const getAll = async (scope: string): Promise<{ [key: string]: CommandItemType } | null> => {
   return firebaseCommandsRef
     .child(scope)
     .once("value")
     .then((snapshot) => {
       const commands = snapshot.val();
       if (commands !== null) {
-        return _.mapKeys(commands, (value, key) => decodeSpecialChars(key));
+        return _.mapKeys(commands, (value, key) => decodeSpecialChars(key)) as { [key: string]: CommandItemType };
       }
       return null;
     })
@@ -60,7 +56,7 @@ const getAll = async (scope: string) => {
     });
 };
 
-const get = async (scope: string, commandId: string) => {
+const get = async (scope: string, commandId: string): Promise<CommandItemType | null> => {
   return firebaseCommandsRef
     .child(scope)
     .child(encodeSpecialChars(commandId))
@@ -68,7 +64,7 @@ const get = async (scope: string, commandId: string) => {
     .then((snapshot) => {
       const command = snapshot.val();
       if (command !== null) {
-        return command;
+        return command as CommandItemType;
       }
       return null;
     })

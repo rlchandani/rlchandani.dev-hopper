@@ -30,21 +30,25 @@ const hopperLookup = async (scope: string, input: string) => {
   return new Promise<string>((resolve, reject) => {
     try {
       getCommandById(scope, prefix)
-        .then((command: CommandItemType) => {
-          const protocol = new URL(command.url).protocol;
-          if (protocol !== "https:" && protocol !== "http:") {
-            return resolve("");
-          }
-          if (command.searchurl && inputArray.length !== 1) {
-            const searchParam =
+        .then((command: CommandItemType | null) => {
+          if (command === null) {
+            resolve(DEFAULT_COMMAND);
+          } else {
+            const protocol = new URL(command.url).protocol;
+            if (protocol !== "https:" && protocol !== "http:") {
+              return resolve("");
+            }
+            if (command.searchurl && inputArray.length !== 1) {
+              const searchParam =
               prefix !== "$" ? prefix.length + 1 : prefix.length;
-            return resolve(
-              `${command.searchurl}${encodeURIComponent(
-                input.substring(searchParam)
-              )}`
-            );
+              return resolve(
+                `${command.searchurl}${encodeURIComponent(
+                  input.substring(searchParam)
+                )}`
+              );
+            }
+            return resolve(command.url);
           }
-          return resolve(command.url);
         })
         .catch(() => {
           return resolve("");
@@ -82,7 +86,7 @@ export const hopper = https.onRequest(async (request, response) => {
   let isFound = false;
   switch (searchQuery) {
     case DEFAULT_SEARCH:
-      response.status(200).send(await viewHelpPage());
+      response.status(200).send(await viewHelpPage(scopesQuery));
       break;
     default:
       for (const scopeQuery of scopesQuery) {
@@ -91,13 +95,13 @@ export const hopper = https.onRequest(async (request, response) => {
         }
         await hopperLookup(scopeQuery, searchQuery)
           .then((redirectUri: string) => {
-            if (!redirectUri && defaultCommand.searchurl) {
+            if (!redirectUri && defaultCommand?.searchurl) {
               if (scopeQuery === DEFAULT_SCOPE) {
                 if (process.env.FUNCTIONS_EMULATOR) {
                   return response
                     .status(200)
                     .send(
-                      `${defaultCommand.searchurl}${encodeURIComponent(
+                      `${defaultCommand?.searchurl}${encodeURIComponent(
                         searchQuery
                       )}`
                     );
@@ -105,7 +109,7 @@ export const hopper = https.onRequest(async (request, response) => {
                   return response
                     .status(302)
                     .redirect(
-                      `${defaultCommand.searchurl}${encodeURIComponent(
+                      `${defaultCommand?.searchurl}${encodeURIComponent(
                         searchQuery
                       )}`
                     );

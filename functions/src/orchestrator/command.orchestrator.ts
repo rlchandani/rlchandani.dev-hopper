@@ -1,13 +1,10 @@
 import { logger } from "firebase-functions";
+import _ = require("lodash");
 
 import * as commandDao from "../dao/command.dao";
 import { CommandItemType, DEFAULT_SCOPE } from "../type/command.type";
 
-const addCommand = async (
-  scope: string,
-  commandId: string,
-  commandItem: CommandItemType
-) => {
+const addCommand = async (scope: string, commandId: string, commandItem: CommandItemType) => {
   try {
     if (await commandDao.add(scope, commandId, commandItem)) {
       logger.info(
@@ -26,37 +23,30 @@ const addCommand = async (
 };
 
 const getAllCommands = async (scope: string = DEFAULT_SCOPE) => {
-  const snapshot = await commandDao.getAll(scope);
-  if (snapshot !== null) {
-    return snapshot;
-  }
-  logger.info(`No commands(s) found in scope: ${scope}`);
-  return {};
+  return commandDao.getAll(scope)
+    .then((commands) => {
+      if (commands === null) {
+        logger.info(`No commands(s) found in scope: ${scope}`);
+      }
+      return _.pickBy(commands, (command) => command.enabled === true);
+    }).catch((err) => {
+      logger.error("Failed to query database in function: getAllCommands.", err);
+      throw err;
+    });
 };
 
-const getCommandById = async (
-  scope: string = DEFAULT_SCOPE,
-  commandId: string
-) => {
-  const snapshot = await commandDao.get(scope, commandId);
-  if (snapshot !== null && snapshot.enabled === true) {
-    return snapshot;
-  }
-  throw new Error(
-    `No command found with name: ${commandId} in scope: ${scope}`
-  );
+const getCommandById = async ( scope: string = DEFAULT_SCOPE, commandId: string) => {
+  return commandDao.get(scope, commandId)
+    .then((command) => {
+      if (command === null || command.enabled === false) {
+        logger.info(`No command found with id: ${commandId} in scope: ${scope}`);
+        return null;
+      }
+      return command;
+    }).catch((err) => {
+      logger.error("Failed to query database in function: getCommandById.", err);
+      throw err;
+    });
 };
 
-const checkIfCommandExist = async (
-  scope: string = DEFAULT_SCOPE,
-  commandId: string
-) => {
-  try {
-    await getCommandById(scope, commandId);
-    return true;
-  } catch (err) {
-    return false;
-  }
-};
-
-export { addCommand, checkIfCommandExist, getAllCommands, getCommandById };
+export { addCommand, getAllCommands, getCommandById };

@@ -16,8 +16,8 @@
         "function": "hopper"
       },
       {
-        "source": "/api/initDB",
-        "function": "initDB"
+        "source": "/api/loadDB",
+        "function": "loadDB"
       },
       {
         "source": "/api/commands",
