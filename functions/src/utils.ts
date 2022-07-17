@@ -34,6 +34,9 @@ export const viewHelpPage = async (scopes: Set<string>) => {
           margin-top:10px;
           padding-bottom:40px;
         }
+        .ui.table>tbody>tr>td, .ui.table>tr>td {
+          word-break: break-word;
+        }
         code {
           background-color: rgba(175,184,193,0.2);
           font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
@@ -131,6 +134,13 @@ export const viewHelpPage = async (scopes: Set<string>) => {
             data: ${JSON.stringify(data)},
             columns: ${JSON.stringify(columns)},
             paging: false,
+            columnDefs: [
+              { width: "10%", targets: 0 },
+              { width: "10%", targets: 1 },
+              { width: "20%", targets: 2 },
+              { width: "30%", targets: 3 },
+              { width: "30%", targets: 3 },
+            ],
           });
         });
       </script>
