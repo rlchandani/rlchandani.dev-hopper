@@ -31,9 +31,7 @@ const hopperLookup = async (scope: string, input: string) => {
     try {
       getCommandById(scope, prefix)
         .then((command: CommandItemType | null) => {
-          if (command === null) {
-            resolve(DEFAULT_COMMAND);
-          } else {
+          if (command !== null) {
             const protocol = new URL(command.url).protocol;
             if (protocol !== "https:" && protocol !== "http:") {
               return resolve("");

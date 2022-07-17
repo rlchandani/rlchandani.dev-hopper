@@ -29,9 +29,6 @@ const getAllCommands = async (scope: string = DEFAULT_SCOPE) => {
         logger.info(`No commands(s) found in scope: ${scope}`);
       }
       return _.pickBy(commands, (command) => command.enabled === true);
-    }).catch((err) => {
-      logger.error("Failed to query database in function: getAllCommands.", err);
-      throw err;
     });
 };
 
@@ -39,13 +36,11 @@ const getCommandById = async ( scope: string = DEFAULT_SCOPE, commandId: string)
   return commandDao.get(scope, commandId)
     .then((command) => {
       if (command === null || command.enabled === false) {
-        logger.info(`No command found with id: ${commandId} in scope: ${scope}`);
-        return null;
+        throw new Error(
+          `No command found with name: ${commandId} in scope: ${scope}`
+        );
       }
       return command;
-    }).catch((err) => {
-      logger.error("Failed to query database in function: getCommandById.", err);
-      throw err;
     });
 };
 
