@@ -1,15 +1,16 @@
 "use client";
 
 import React from "react";
-import { Trash2, ExternalLink, Globe, ChevronRight } from "lucide-react";
+import { Trash2, ExternalLink, Globe, ChevronRight, Pencil, Zap } from "lucide-react";
 import { Shortcut } from "@/lib/firebase";
 
 interface ShortcutTableProps {
     shortcuts: Shortcut[];
     onDelete: (id: string) => void;
+    onEdit: (shortcut: Shortcut) => void;
 }
 
-export default function ShortcutTable({ shortcuts, onDelete }: ShortcutTableProps) {
+export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutTableProps) {
     if (shortcuts.length === 0) {
         return (
             <div className="text-center py-16 p-6 bg-white dark:bg-slate-800/50 border border-dashed border-gray-400 dark:border-slate-600 rounded-2xl">
@@ -39,9 +40,19 @@ export default function ShortcutTable({ shortcuts, onDelete }: ShortcutTableProp
                                 className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 ${index > 0 ? "border-t border-gray-200 dark:border-slate-700" : ""}`}
                             >
                                 <td className="px-6 py-4">
-                                    <span className="font-mono font-bold text-gray-900 dark:text-white">
-                                        {shortcut.key}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono font-bold text-gray-900 dark:text-white">
+                                            {shortcut.key}
+                                        </span>
+                                        {shortcut.isPrefix && (
+                                            <span
+                                                title="Prefix Mode (no space required)"
+                                                className="bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400 p-1 rounded-md"
+                                            >
+                                                <Zap size={12} fill="currentColor" />
+                                            </span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2 max-w-md">
@@ -73,13 +84,24 @@ export default function ShortcutTable({ shortcuts, onDelete }: ShortcutTableProp
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button
-                                        onClick={() => onDelete(shortcut.id)}
-                                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={() => onEdit(shortcut)}
+                                            className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-colors"
+                                            title="Edit"
+                                            aria-label="Edit shortcut"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete(shortcut.id)}
+                                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                                            title="Delete"
+                                            aria-label="Delete shortcut"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -90,13 +112,11 @@ export default function ShortcutTable({ shortcuts, onDelete }: ShortcutTableProp
             {/* Mobile List Style (Option 3) */}
             <div className="md:hidden bg-white dark:bg-slate-800/50 border border-gray-400 dark:border-slate-600 rounded-2xl overflow-hidden">
                 {shortcuts.map((shortcut, index) => (
-                    <a
+                    <div
                         key={shortcut.id}
-                        href={shortcut.url.replace("%s", "test")}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className={`flex items-center justify-between px-4 py-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 active:bg-gray-100 dark:active:bg-slate-700 ${index > 0 ? "border-t border-gray-200 dark:border-slate-700" : ""
                             }`}
+                        onClick={() => onEdit(shortcut)} // Make whole row open edit on mobile
                     >
                         <div className="flex-1 min-w-0">
                             {/* Command name */}
@@ -104,6 +124,14 @@ export default function ShortcutTable({ shortcuts, onDelete }: ShortcutTableProp
                                 <span className="font-mono font-bold text-gray-900 dark:text-white">
                                     {shortcut.key}
                                 </span>
+                                {shortcut.isPrefix && (
+                                    <span
+                                        title="Prefix Mode (no space required)"
+                                        className="bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400 p-1 rounded-md"
+                                    >
+                                        <Zap size={12} fill="currentColor" />
+                                    </span>
+                                )}
                                 {shortcut.profile === "global" && (
                                     <span className="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
                                         global
@@ -129,15 +157,26 @@ export default function ShortcutTable({ shortcuts, onDelete }: ShortcutTableProp
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
+                                    onEdit(shortcut);
+                                }}
+                                className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                aria-label="Edit shortcut"
+                            >
+                                <Pencil size={16} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     onDelete(shortcut.id);
                                 }}
                                 className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                aria-label="Delete shortcut"
                             >
                                 <Trash2 size={16} />
                             </button>
-                            <ChevronRight size={18} className="text-gray-400 dark:text-slate-500" />
                         </div>
-                    </a>
+                    </div>
                 ))}
             </div>
         </>

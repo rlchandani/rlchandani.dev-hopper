@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAllShortcuts, addShortcut as addFirestoreShortcut, deleteShortcut as deleteFirestoreShortcut, getProfiles, getUserSettings, Shortcut, UserSettings } from '@/lib/firebase';
+import { getAllShortcuts, addShortcut as addFirestoreShortcut, updateShortcut as updateFirestoreShortcut, deleteShortcut as deleteFirestoreShortcut, getProfiles, getUserSettings, Shortcut, UserSettings } from '@/lib/firebase';
 
 export function useShortcuts() {
     const { user } = useAuth();
@@ -36,11 +36,11 @@ export function useShortcuts() {
         fetchData();
     }, [fetchData]);
 
-    const add = async (key: string, url: string, targetProfile: string) => {
+    const add = async (key: string, url: string, targetProfile: string, isPrefix?: boolean) => {
         if (!user) throw new Error("Not authenticated");
 
         try {
-            await addFirestoreShortcut(user.uid, { key, url, profile: targetProfile });
+            await addFirestoreShortcut(user.uid, { key, url, profile: targetProfile, isPrefix });
             await fetchData();
         } catch (err) {
             console.error(err);
@@ -58,5 +58,17 @@ export function useShortcuts() {
         }
     };
 
-    return { shortcuts, profiles, settings, loading, error, add, remove, refresh: fetchData };
+    const update = async (id: string, key: string, url: string, profile: string, isPrefix?: boolean) => {
+        if (!user) throw new Error("Not authenticated");
+
+        try {
+            await updateFirestoreShortcut(user.uid, id, { key, url, profile, isPrefix });
+            await fetchData();
+        } catch (err) {
+            console.error(err);
+            throw err;
+        }
+    };
+
+    return { shortcuts, profiles, settings, loading, error, add, update, remove, refresh: fetchData };
 }

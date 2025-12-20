@@ -2,8 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X, Check } from "lucide-react";
+
 import { useShortcuts } from "@/hooks/useShortcuts";
+import { Shortcut } from "@/lib/firebase";
+
 import Header from "@/components/Header";
 import StatsCards from "@/components/StatsCards";
 import ShortcutTable from "@/components/ShortcutTable";
@@ -11,6 +14,8 @@ import AddShortcutForm from "@/components/AddShortcutForm";
 import SetupGuide from "@/components/SetupGuide";
 import MobileNav from "@/components/MobileNav";
 import SettingsDrawer from "@/components/SettingsDrawer";
+import ShortcutModal from "@/components/ShortcutModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function Dashboard() {
     const searchParams = useSearchParams();
@@ -18,10 +23,13 @@ export default function Dashboard() {
     // Initialize search query to empty string, ignoring URL params for filtering
     const [searchQuery, setSearchQuery] = useState("");
 
-    const [filter, setFilter] = useState<string>("all");
+    const [selectedFilters, setSelectedFilters] = useState<string[]>(["all"]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const { shortcuts, profiles, settings, loading, remove, add, refresh } = useShortcuts();
+    const [editingShortcut, setEditingShortcut] = useState<Shortcut | null>(null);
+    const [shortcutToDelete, setShortcutToDelete] = useState<string | null>(null);
+
+    const { shortcuts, profiles, settings, loading, remove, add, update, refresh } = useShortcuts();
     const [error, setError] = useState<string | null>(null);
 
     // Auto-open settings drawer if query param is present
@@ -41,10 +49,73 @@ export default function Dashboard() {
     }, [searchParams, router]);
 
     // Profile for setup guide and adding shortcuts - based on filter
-    const activeProfile = filter === "all" || filter === "global" ? (profiles[0] || "personal") : filter;
+    // If multiple selected, default to first available (usually Personal)
+    const activeProfile = selectedFilters.length === 1 && selectedFilters[0] !== "all" && selectedFilters[0] !== "global"
+        ? selectedFilters[0]
+        : (profiles[0] || "personal");
 
-    const handleAdd = async (key: string, url: string, targetProfile: string) => {
-        await add(key, url, targetProfile);
+    const handleAdd = async (key: string, url: string, targetProfile: string, isPrefix?: boolean) => {
+        await add(key, url, targetProfile, isPrefix);
+    };
+
+    const handleEdit = (shortcut: Shortcut) => {
+        setEditingShortcut(shortcut);
+    };
+
+    const handleUpdate = async (id: string, key: string, url: string, profile: string, isPrefix?: boolean) => {
+        await update(id, key, url, profile, isPrefix);
+        setEditingShortcut(null);
+    };
+
+    // Handle Client-Side Redirection (e.g. from browser search engine)
+    useEffect(() => {
+        const q = searchParams.get("search") || searchParams.get("q");
+        if (!q || loading || shortcuts.length === 0) return;
+
+        const query = q.trim();
+
+        // 1. Try Prefix Matches (e.g. $AMZN where key is $ and isPrefix=true)
+        const prefixShortcut = shortcuts.find(s => s.isPrefix && query.toLowerCase().startsWith(s.key.toLowerCase()));
+
+        if (prefixShortcut) {
+            const args = query.slice(prefixShortcut.key.length).trim();
+            const targetUrl = prefixShortcut.url.replace("%s", encodeURIComponent(args));
+            window.location.replace(targetUrl);
+            return;
+        }
+
+        // 2. Try Standard Command Match (e.g. g search)
+        const parts = query.split(" ");
+        const command = parts[0].toLowerCase();
+        const args = parts.slice(1).join(" ");
+
+        // Check profile validity if provided in URL (e.g. ?profile=work)
+        const targetProfile = searchParams.get("profile");
+
+        const shortcut = shortcuts.find(s => {
+            if (targetProfile && s.profile !== targetProfile && s.profile !== "global") return false;
+            return s.key.toLowerCase() === command;
+        });
+
+        if (shortcut) {
+            const targetUrl = shortcut.url.replace("%s", encodeURIComponent(args));
+            window.location.replace(targetUrl);
+        } else {
+            // Fallback (if configured to show dashboard, do nothing, or redirect to fallback search)
+            // For now, staying on dashboard showing filtered results (which logic below handles)
+        }
+
+    }, [searchParams, shortcuts, loading]);
+
+    const handleDeleteClick = (id: string) => {
+        setShortcutToDelete(id);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (shortcutToDelete) {
+            await remove(shortcutToDelete);
+            setShortcutToDelete(null);
+        }
     };
 
     // Build dynamic filters from profiles
@@ -62,12 +133,32 @@ export default function Dashboard() {
         return f ? f.label : "All";
     };
 
+    // Toggle filter logic
+    const toggleFilter = (id: string) => {
+        setSelectedFilters(prev => {
+            if (id === "all") return ["all"];
+
+            // If currently "all", checking specific one clears "all" and sets specific
+            let newFilters = prev.includes("all") ? [] : [...prev];
+
+            if (newFilters.includes(id)) {
+                newFilters = newFilters.filter(f => f !== id);
+            } else {
+                newFilters.push(id);
+            }
+
+            // If nothing selected, revert to all
+            return newFilters.length === 0 ? ["all"] : newFilters;
+        });
+    };
+
     // Filter shortcuts
     const filteredShortcuts = useMemo(() => {
         let result = shortcuts;
 
-        if (filter !== "all") {
-            result = result.filter((s) => s.profile === filter);
+        // "all" means no filtering
+        if (!selectedFilters.includes("all")) {
+            result = result.filter((s) => selectedFilters.includes(s.profile));
         }
 
         if (searchQuery.trim()) {
@@ -80,7 +171,7 @@ export default function Dashboard() {
         }
 
         return result;
-    }, [shortcuts, filter, searchQuery]);
+    }, [shortcuts, selectedFilters, searchQuery]);
 
 
 
@@ -129,6 +220,11 @@ export default function Dashboard() {
                                 className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium text-gray-900 dark:text-white hover:border-gray-400 dark:hover:border-slate-500"
                             >
                                 <span>Filter</span>
+                                {selectedFilters.length > 0 && !selectedFilters.includes("all") && (
+                                    <span className="flex items-center justify-center w-5 h-5 bg-green-500 text-black text-xs font-bold rounded-full">
+                                        {selectedFilters.length}
+                                    </span>
+                                )}
                                 <ChevronDown size={16} className={`transition-transform ${isFilterOpen ? "rotate-180" : ""}`} />
                             </button>
 
@@ -139,39 +235,31 @@ export default function Dashboard() {
                                         className="fixed inset-0 z-40"
                                         onClick={() => setIsFilterOpen(false)}
                                     />
-                                    <div className="absolute top-full right-0 mt-2 z-50 min-w-[160px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
-                                        {filters.map((f) => (
-                                            <button
-                                                key={f.id}
-                                                onClick={() => {
-                                                    setFilter(f.id);
-                                                    setIsFilterOpen(false);
-                                                }}
-                                                className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-slate-700 ${filter === f.id
-                                                    ? "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 font-medium"
-                                                    : "text-gray-900 dark:text-white"
-                                                    }`}
-                                            >
-                                                {f.label}
-                                            </button>
-                                        ))}
+                                    <div className="absolute top-full right-0 mt-2 z-50 min-w-[200px] bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden p-1">
+                                        {filters.map((f) => {
+                                            const isSelected = selectedFilters.includes(f.id);
+                                            return (
+                                                <button
+                                                    key={f.id}
+                                                    onClick={() => {
+                                                        toggleFilter(f.id);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-left text-sm rounded-lg flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-gray-900 dark:text-white"
+                                                >
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected
+                                                        ? "bg-green-500 border-green-500 text-white"
+                                                        : "border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                                        }`}>
+                                                        {isSelected && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                    <span>{f.label}</span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </>
                             )}
                         </div>
-
-                        {/* Active Filter Badge */}
-                        {filter !== "all" && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-green-500 text-black rounded-xl text-sm font-medium">
-                                <span>{getFilterLabel(filter)}</span>
-                                <button
-                                    onClick={() => setFilter("all")}
-                                    className="p-0.5 hover:bg-black/10 rounded"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -182,7 +270,7 @@ export default function Dashboard() {
                     </p>
                     <div className="flex items-center gap-2">
                         <SetupGuide profile={activeProfile} />
-                        <AddShortcutForm onAdd={handleAdd} currentProfile={activeProfile} />
+                        <AddShortcutForm onAdd={handleAdd} currentProfile={activeProfile} profiles={profiles} />
                     </div>
                 </div>
 
@@ -197,7 +285,11 @@ export default function Dashboard() {
                         ))}
                     </div>
                 ) : (
-                    <ShortcutTable shortcuts={filteredShortcuts} onDelete={remove} />
+                    <ShortcutTable
+                        shortcuts={filteredShortcuts}
+                        onDelete={handleDeleteClick}
+                        onEdit={handleEdit}
+                    />
                 )}
             </main>
 
@@ -208,6 +300,33 @@ export default function Dashboard() {
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
                 onProfilesChange={refresh}
+            />
+
+            {/* Edit Modal (Reusing ShortcutModal) */}
+            <ShortcutModal
+                isOpen={!!editingShortcut}
+                onClose={() => setEditingShortcut(null)}
+                onSave={async (key, url, profile, isPrefix) => {
+                    if (editingShortcut) {
+                        await handleUpdate(editingShortcut.id, key, url, profile, isPrefix);
+                    }
+                }}
+                initialData={editingShortcut}
+                profiles={profiles}
+                title="Edit Shortcut"
+                saveLabel="Save Changes"
+            />
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={!!shortcutToDelete}
+                title="Delete Shortcut"
+                message="Are you sure you want to delete this shortcut? This action cannot be undone."
+                confirmLabel="Delete"
+                isDestructive={true}
+                isLoading={loading}
+                onCancel={() => setShortcutToDelete(null)}
+                onConfirm={handleConfirmDelete}
             />
         </div>
     );

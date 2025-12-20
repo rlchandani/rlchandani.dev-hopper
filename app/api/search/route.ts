@@ -28,6 +28,16 @@ export async function GET(request: NextRequest) {
         const shortcuts = await getAllShortcuts(userId);
         const settings = await getUserSettings(userId);
 
+        // 1. Priority: Prefix Matches (e.g. $AMZN)
+        const prefixShortcut = shortcuts.find(s => s.isPrefix && q.toLowerCase().startsWith(s.key.toLowerCase()));
+
+        if (prefixShortcut) {
+            const args = q.slice(prefixShortcut.key.length).trim();
+            const url = prefixShortcut.url.replace("%s", encodeURIComponent(args));
+            return NextResponse.redirect(url, 307);
+        }
+
+        // 2. Standard Space-Delimited Match
         const parts = q.trim().split(" ");
         const command = parts[0].toLowerCase();
         const args = parts.slice(1).join(" ");

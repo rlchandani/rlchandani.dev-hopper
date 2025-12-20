@@ -23,6 +23,7 @@ export interface Shortcut {
   url: string;
   profile: string;
   userId: string; // User-scoped shortcuts
+  isPrefix?: boolean; // If true, matches command directly without space (e.g. $AMZN instead of $ AMZN)
 }
 
 export interface UserSettings {
@@ -180,11 +181,33 @@ export const getAllShortcuts = async (userId: string): Promise<Shortcut[]> => {
 
 export const addShortcut = async (userId: string, shortcut: Omit<Shortcut, "id" | "userId">) => {
   const id = `${userId}_${shortcut.profile}_${shortcut.key}`;
-  await setDoc(doc(db, "shortcuts", id), { ...shortcut, id, userId });
+  // Ensure isPrefix is boolean (false if undefined) to avoid Firestore "Unsupported field value: undefined"
+  await setDoc(doc(db, "shortcuts", id), {
+    ...shortcut,
+    id,
+    userId,
+    isPrefix: !!shortcut.isPrefix
+  });
 };
 
 export const deleteShortcut = async (id: string) => {
   await deleteDoc(doc(db, "shortcuts", id));
+};
+
+export const updateShortcut = async (userId: string, oldId: string, shortcut: Omit<Shortcut, "id" | "userId">) => {
+  const newId = `${userId}_${shortcut.profile}_${shortcut.key}`;
+  const safeShortcut = { ...shortcut, isPrefix: !!shortcut.isPrefix };
+
+  if (oldId === newId) {
+    // Just update URL/content
+    await setDoc(doc(db, "shortcuts", newId), { ...safeShortcut, id: newId, userId }, { merge: true });
+  } else {
+    // Key or Profile changed, so ID changed. Delete old, create new.
+    const batch = writeBatch(db);
+    batch.delete(doc(db, "shortcuts", oldId));
+    batch.set(doc(db, "shortcuts", newId), { ...safeShortcut, id: newId, userId });
+    await batch.commit();
+  }
 };
 
 // ============================================
