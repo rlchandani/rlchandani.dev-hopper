@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query, where, writeBatch, getDoc } from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, query, where, writeBatch, getDoc, updateDoc, increment } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -24,6 +24,14 @@ export interface Shortcut {
   profile: string;
   userId: string; // User-scoped shortcuts
   isPrefix?: boolean; // If true, matches command directly without space (e.g. $AMZN instead of $ AMZN)
+  clicks?: number;
+}
+
+export interface AnalyticsEvent {
+  id?: string;
+  shortcutId: string;
+  timestamp: string; // ISO string
+  userAgent: string;
 }
 
 export interface UserSettings {
@@ -43,7 +51,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 export const getUserSettings = async (userId: string): Promise<UserSettings> => {
   try {
-    const docRef = doc(db, "users", userId, "settings", "preferences");
+    const docRef = doc(db, "hopper-users", userId, "settings", "preferences");
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return { ...DEFAULT_SETTINGS, ...docSnap.data() } as UserSettings;
@@ -55,7 +63,7 @@ export const getUserSettings = async (userId: string): Promise<UserSettings> => 
 };
 
 export const saveUserSettings = async (userId: string, settings: Partial<UserSettings>) => {
-  const docRef = doc(db, "users", userId, "settings", "preferences");
+  const docRef = doc(db, "hopper-users", userId, "settings", "preferences");
   await setDoc(docRef, settings, { merge: true });
 };
 
@@ -88,12 +96,12 @@ export const renameProfile = async (userId: string, oldName: string, newName: st
   // Update profile list
   const settings = await getUserSettings(userId);
   settings.profiles = settings.profiles.map((p) => (p === oldName ? newName : p));
-  const settingsRef = doc(db, "users", userId, "settings", "preferences");
+  const settingsRef = doc(db, "hopper-users", userId, "settings", "preferences");
   batch.set(settingsRef, { profiles: settings.profiles }, { merge: true });
 
   // Get all shortcuts with the old profile name for this user
   const q = query(
-    collection(db, "shortcuts"),
+    collection(db, "hopper-shortcuts"),
     where("userId", "==", userId),
     where("profile", "==", oldName)
   );
@@ -105,8 +113,8 @@ export const renameProfile = async (userId: string, oldName: string, newName: st
     const oldId = docSnap.id;
     const newId = `${userId}_${newName}_${data.key}`;
 
-    batch.delete(doc(db, "shortcuts", oldId));
-    batch.set(doc(db, "shortcuts", newId), {
+    batch.delete(doc(db, "hopper-shortcuts", oldId));
+    batch.set(doc(db, "hopper-shortcuts", newId), {
       ...data,
       id: newId,
       profile: newName,
@@ -122,19 +130,19 @@ export const deleteProfile = async (userId: string, profileName: string) => {
   // Remove from profile list
   const settings = await getUserSettings(userId);
   settings.profiles = settings.profiles.filter((p) => p !== profileName);
-  const settingsRef = doc(db, "users", userId, "settings", "preferences");
+  const settingsRef = doc(db, "hopper-users", userId, "settings", "preferences");
   batch.set(settingsRef, { profiles: settings.profiles }, { merge: true });
 
   // Delete all shortcuts for this profile
   const q = query(
-    collection(db, "shortcuts"),
+    collection(db, "hopper-shortcuts"),
     where("userId", "==", userId),
     where("profile", "==", profileName)
   );
   const querySnapshot = await getDocs(q);
 
   querySnapshot.forEach((docSnap) => {
-    batch.delete(doc(db, "shortcuts", docSnap.id));
+    batch.delete(doc(db, "hopper-shortcuts", docSnap.id));
   });
 
   await batch.commit();
@@ -148,7 +156,7 @@ export const getShortcuts = async (userId: string, profile: string): Promise<Sho
   const shortcuts: Shortcut[] = [];
   try {
     const q = query(
-      collection(db, "shortcuts"),
+      collection(db, "hopper-shortcuts"),
       where("userId", "==", userId),
       where("profile", "in", [profile, "global"])
     );
@@ -166,7 +174,7 @@ export const getAllShortcuts = async (userId: string): Promise<Shortcut[]> => {
   const shortcuts: Shortcut[] = [];
   try {
     const q = query(
-      collection(db, "shortcuts"),
+      collection(db, "hopper-shortcuts"),
       where("userId", "==", userId)
     );
     const querySnapshot = await getDocs(q);
@@ -182,7 +190,7 @@ export const getAllShortcuts = async (userId: string): Promise<Shortcut[]> => {
 export const addShortcut = async (userId: string, shortcut: Omit<Shortcut, "id" | "userId">) => {
   const id = `${userId}_${shortcut.profile}_${shortcut.key}`;
   // Ensure isPrefix is boolean (false if undefined) to avoid Firestore "Unsupported field value: undefined"
-  await setDoc(doc(db, "shortcuts", id), {
+  await setDoc(doc(db, "hopper-shortcuts", id), {
     ...shortcut,
     id,
     userId,
@@ -191,7 +199,7 @@ export const addShortcut = async (userId: string, shortcut: Omit<Shortcut, "id" 
 };
 
 export const deleteShortcut = async (id: string) => {
-  await deleteDoc(doc(db, "shortcuts", id));
+  await deleteDoc(doc(db, "hopper-shortcuts", id));
 };
 
 export const updateShortcut = async (userId: string, oldId: string, shortcut: Omit<Shortcut, "id" | "userId">) => {
@@ -200,14 +208,52 @@ export const updateShortcut = async (userId: string, oldId: string, shortcut: Om
 
   if (oldId === newId) {
     // Just update URL/content
-    await setDoc(doc(db, "shortcuts", newId), { ...safeShortcut, id: newId, userId }, { merge: true });
+    await setDoc(doc(db, "hopper-shortcuts", newId), { ...safeShortcut, id: newId, userId }, { merge: true });
   } else {
     // Key or Profile changed, so ID changed. Delete old, create new.
     const batch = writeBatch(db);
-    batch.delete(doc(db, "shortcuts", oldId));
-    batch.set(doc(db, "shortcuts", newId), { ...safeShortcut, id: newId, userId });
+    batch.delete(doc(db, "hopper-shortcuts", oldId));
+    batch.set(doc(db, "hopper-shortcuts", newId), { ...safeShortcut, id: newId, userId });
     await batch.commit();
   }
+};
+
+export const incrementShortcutUsage = async (id: string) => {
+  const docRef = doc(db, "hopper-shortcuts", id);
+  // We use updateDoc so we don't overwrite other fields, and increment for atomicity
+  await updateDoc(docRef, {
+    clicks: increment(1)
+  });
+};
+
+export const logAnalyticsEvent = async (shortcutId: string, userAgent: string) => {
+  try {
+    const analyticsRef = collection(db, "hopper-analytics");
+    await setDoc(doc(analyticsRef), {
+      shortcutId,
+      timestamp: new Date().toISOString(),
+      userAgent
+    });
+  } catch (error) {
+    console.error("Error logging analytics:", error);
+  }
+};
+
+export const getAnalyticsData = async (shortcutId: string): Promise<AnalyticsEvent[]> => {
+  const events: AnalyticsEvent[] = [];
+  try {
+    const q = query(
+      collection(db, "hopper-analytics"),
+      where("shortcutId", "==", shortcutId)
+    );
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+      events.push({ id: doc.id, ...doc.data() } as AnalyticsEvent);
+    });
+  } catch (error) {
+    console.error("Error fetching analytics:", error);
+  }
+  return events;
 };
 
 // ============================================
@@ -227,7 +273,7 @@ export const importShortcuts = async (userId: string, jsonString: string, mode: 
   if (mode === "replace") {
     const existing = await getAllShortcuts(userId);
     const batch = writeBatch(db);
-    existing.forEach((s) => batch.delete(doc(db, "shortcuts", s.id)));
+    existing.forEach((s) => batch.delete(doc(db, "hopper-shortcuts", s.id)));
     await batch.commit();
   }
 
@@ -257,14 +303,14 @@ export const generateApiKey = async (userId: string): Promise<string> => {
 
   // 1. Delete old key mapping if exists
   if (oldKey) {
-    batch.delete(doc(db, "apiKeys", oldKey));
+    batch.delete(doc(db, "hopper-apiKeys", oldKey));
   }
 
   // 2. Add new key mapping
-  batch.set(doc(db, "apiKeys", key), { userId });
+  batch.set(doc(db, "hopper-apiKeys", key), { userId });
 
   // 3. Update user settings
-  const settingsRef = doc(db, "users", userId, "settings", "preferences");
+  const settingsRef = doc(db, "hopper-users", userId, "settings", "preferences");
   batch.set(settingsRef, { apiKey: key }, { merge: true });
 
   await batch.commit();
@@ -273,7 +319,7 @@ export const generateApiKey = async (userId: string): Promise<string> => {
 
 export const getUserIdByApiKey = async (apiKey: string): Promise<string | null> => {
   try {
-    const docRef = doc(db, "apiKeys", apiKey);
+    const docRef = doc(db, "hopper-apiKeys", apiKey);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return docSnap.data().userId;

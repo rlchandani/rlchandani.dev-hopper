@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
-import { Trash2, ExternalLink, Globe, ChevronRight, Pencil, Zap } from "lucide-react";
+import { Trash2, ExternalLink, Globe, ChevronRight, Pencil, Zap, BarChart2, QrCode } from "lucide-react";
 import { Shortcut } from "@/lib/firebase";
+import AnalyticsModal from "./AnalyticsModal";
+import QRModal from "./QRModal";
 
 interface ShortcutTableProps {
     shortcuts: Shortcut[];
@@ -11,6 +13,9 @@ interface ShortcutTableProps {
 }
 
 export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutTableProps) {
+    const [analyticsShortcut, setAnalyticsShortcut] = React.useState<Shortcut | null>(null);
+    const [qrShortcut, setQrShortcut] = React.useState<Shortcut | null>(null);
+
     if (shortcuts.length === 0) {
         return (
             <div className="text-center py-16 p-6 bg-white dark:bg-slate-800/50 border border-dashed border-gray-400 dark:border-slate-600 rounded-2xl">
@@ -22,6 +27,20 @@ export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutT
 
     return (
         <>
+            <AnalyticsModal
+                isOpen={!!analyticsShortcut}
+                onClose={() => setAnalyticsShortcut(null)}
+                shortcutId={analyticsShortcut?.id || ""}
+                shortcutKey={analyticsShortcut?.key || ""}
+            />
+
+            <QRModal
+                isOpen={!!qrShortcut}
+                onClose={() => setQrShortcut(null)}
+                shortcutKey={qrShortcut?.key || ""}
+                shortcutUrl={qrShortcut?.url || ""}
+            />
+
             {/* Desktop Table */}
             <div className="hidden md:block overflow-hidden bg-white dark:bg-slate-800/50 border border-gray-400 dark:border-slate-600 rounded-2xl">
                 <table className="w-full">
@@ -30,6 +49,8 @@ export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutT
                             <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500 dark:text-slate-400">Command</th>
                             <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500 dark:text-slate-400">Destination URL</th>
                             <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500 dark:text-slate-400">Profile</th>
+
+                            <th className="text-left px-6 py-4 text-sm font-semibold text-gray-500 dark:text-slate-400">Stats</th>
                             <th className="text-right px-6 py-4 text-sm font-semibold text-gray-500 dark:text-slate-400">Actions</th>
                         </tr>
                     </thead>
@@ -83,8 +104,28 @@ export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutT
                                         </span>
                                     )}
                                 </td>
+                                <td className="px-6 py-4">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 text-xs font-medium">
+                                        <BarChart2 size={12} />
+                                        {shortcut.clicks || 0} clicks
+                                    </span>
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={() => setQrShortcut(shortcut)}
+                                            className="p-2 text-gray-500 hover:bg-gray-500/10 rounded-xl transition-colors"
+                                            title="View QR Code"
+                                        >
+                                            <QrCode size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => setAnalyticsShortcut(shortcut)}
+                                            className="p-2 text-purple-500 hover:bg-purple-500/10 rounded-xl transition-colors"
+                                            title="View Analytics"
+                                        >
+                                            <BarChart2 size={18} />
+                                        </button>
                                         <button
                                             onClick={() => onEdit(shortcut)}
                                             className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-colors"
@@ -137,6 +178,10 @@ export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutT
                                         global
                                     </span>
                                 )}
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 text-[10px] font-medium ml-2">
+                                    <BarChart2 size={10} />
+                                    {shortcut.clicks || 0}
+                                </span>
                             </div>
                             {/* URL */}
                             <div className="flex items-center gap-2 mt-0.5">
@@ -153,6 +198,28 @@ export default function ShortcutTable({ shortcuts, onDelete, onEdit }: ShortcutT
 
                         {/* Right side - Delete button and chevron */}
                         <div className="flex items-center gap-2 ml-3">
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setQrShortcut(shortcut);
+                                }}
+                                className="p-2 text-gray-500 hover:bg-gray-500/10 rounded-lg transition-colors"
+                                aria-label="View QR Code"
+                            >
+                                <QrCode size={16} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setAnalyticsShortcut(shortcut);
+                                }}
+                                className="p-2 text-purple-500 hover:bg-purple-500/10 rounded-lg transition-colors"
+                                aria-label="View Analytics"
+                            >
+                                <BarChart2 size={16} />
+                            </button>
                             <button
                                 onClick={(e) => {
                                     e.preventDefault();

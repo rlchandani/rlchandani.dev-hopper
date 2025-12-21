@@ -57,6 +57,21 @@ export default function ShortcutModal({
 
     if (!isOpen) return null;
 
+    const validateUrl = (input: string) => {
+        let finalUrl = input.trim();
+        // Auto-prepend https if missing scheme
+        if (!/^https?:\/\//i.test(finalUrl)) {
+            finalUrl = 'https://' + finalUrl;
+        }
+        try {
+            // Validate with dummy param for %s placeholder compatibility
+            new URL(finalUrl.replace(/%s/g, 'placeholder'));
+            return { valid: true, formatted: finalUrl };
+        } catch {
+            return { valid: false, error: "Invalid URL format" };
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!key || !url) return;
@@ -64,8 +79,16 @@ export default function ShortcutModal({
         setLoading(true);
         setError("");
 
+        // Validate URL
+        const validation = validateUrl(url);
+        if (!validation.valid) {
+            setError(validation.error || "Invalid URL");
+            setLoading(false);
+            return;
+        }
+
         try {
-            await onSave(key, url, profile, isPrefix);
+            await onSave(key, validation.formatted!, profile, isPrefix);
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to save shortcut");

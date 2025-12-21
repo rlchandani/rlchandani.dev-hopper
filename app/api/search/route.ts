@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdByApiKey, getAllShortcuts, getUserSettings } from "@/lib/firebase";
+import { getUserIdByApiKey, getAllShortcuts, getUserSettings, incrementShortcutUsage, logAnalyticsEvent } from "@/lib/firebase";
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const key = searchParams.get("key") || searchParams.get("token");
     const q = searchParams.get("q") || searchParams.get("search");
+    const userAgent = request.headers.get("user-agent") || "Unknown";
 
     if (!key) {
         return NextResponse.json({ error: "Missing API Key. Use ?key=YOUR_KEY" }, { status: 401 });
@@ -34,7 +35,20 @@ export async function GET(request: NextRequest) {
         if (prefixShortcut) {
             const args = q.slice(prefixShortcut.key.length).trim();
             const url = prefixShortcut.url.replace("%s", encodeURIComponent(args));
-            return NextResponse.redirect(url, 307);
+
+            // Fire and forget stats increment
+            incrementShortcutUsage(prefixShortcut.id).catch(e => console.error("Failed to increment stats", e));
+
+            let finalUrl = url;
+            if (!finalUrl.match(/^https?:\/\//)) {
+                if (finalUrl.startsWith("/")) {
+                    finalUrl = new URL(finalUrl, request.url).toString();
+                } else {
+                    finalUrl = `https://${finalUrl}`;
+                }
+            }
+
+            return NextResponse.redirect(finalUrl, 307);
         }
 
         // 2. Standard Space-Delimited Match
@@ -61,7 +75,29 @@ export async function GET(request: NextRequest) {
             if (url.includes("%s")) {
                 url = url.replace("%s", encodeURIComponent(args));
             }
-            return NextResponse.redirect(url, 307);
+
+            let finalUrl = url;
+            try {
+                if (!finalUrl.match(/^https?:\/\//)) {
+                    if (finalUrl.startsWith("/")) {
+                        finalUrl = new URL(finalUrl, request.url).toString();
+                    } else {
+                        finalUrl = `https://${finalUrl}`;
+                    }
+                }
+                // Validate URL
+                new URL(finalUrl);
+            } catch (e) {
+                console.error(`Invalid shortcut URL: ${url}`, e);
+                // Fallback to search if the shortcut URL is hopelessly broken
+                finalUrl = `https://www.google.com/search?q=${encodeURIComponent(targetShortcut.key)}`;
+            }
+
+            // Fire and forget stats increment and analytics
+            incrementShortcutUsage(targetShortcut.id).catch(e => console.error("Failed to increment stats", e));
+            logAnalyticsEvent(targetShortcut.id, userAgent).catch(e => console.error("Failed to log analytics", e));
+
+            return NextResponse.redirect(finalUrl, 307);
         } else {
             // Fallback
             let fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
